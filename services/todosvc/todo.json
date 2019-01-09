@@ -1,0 +1,22 @@
+{
+    "swethan": {
+        "todo-list": [
+            "Swethan task1",
+            "Swethan task2",
+            "Swethan task3"
+        ]
+    },
+    "sandeep": {
+        "todo-list": [
+            "Sandeep task1",
+            "Sandeep task2"
+        ]
+    },
+    "lavanya": {
+        "todo-list": [
+            "Lavanya task1",
+            "Lavanya task2",
+            "Lavanya task3"
+        ]
+    }
+}

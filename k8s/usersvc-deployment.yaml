@@ -1,0 +1,39 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: usersvc-deployment
+  labels:
+    app: usersvc
+spec:
+  selector:
+    matchLabels:
+      app: usersvc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: usersvc
+    spec:
+      containers:
+      - name: usersvc
+        image: abhinaybyrisetty/todomgr-poc:usersvc
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 5000
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 1.2.3.4
+        searches:
+          - ns1.svc.cluster.local
+          - my.dns.search.suffix
+        options:
+          - name: ndots
+            value: "2"
+          - name: edns0

@@ -1,0 +1,17 @@
+{
+    "swethan": {
+        "id":1,
+        "name":"Swethan Kumar",
+        "verified":1
+    },
+    "sandeep": {
+        "id":2,
+        "name":"Sandeep Manamala",
+        "verified":1
+    },
+    "lavanya": {
+        "id":4,
+        "name":"Lavanya Vadlakonda",
+        "verified":0
+    }
+}

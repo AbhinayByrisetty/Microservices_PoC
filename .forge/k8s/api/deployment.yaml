@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels: {forge.service: api, forge.profile: default}
+  annotations: {forge.repo: '', forge.descriptor: service.yaml, forge.version: b85bcc4938693d74e85a4c9442988e96c644b961.sha}
+spec:
+  selector:
+    app: api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "9102"
+    forge.repo: ''
+    forge.descriptor: service.yaml
+    forge.version: b85bcc4938693d74e85a4c9442988e96c644b961.sha
+  labels: {forge.service: api, forge.profile: default}
+spec:
+  selector:
+    app: api
+  ports:
+  - name: metrics
+    port: 9102
+    targetPort: 9102
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata: {name: api, labels: {forge.service: api, forge.profile: default}, annotations: {
+    forge.repo: '', forge.descriptor: service.yaml, forge.version: b85bcc4938693d74e85a4c9442988e96c644b961.sha}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: api}
+  strategy:
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+    type: RollingUpdate
+  revisionHistoryLimit: 1
+  template:
+    metadata:
+      labels: {app: api}
+      name: api
+    spec:
+      containers:
+      - image: registry.hub.docker.com/abhinaybyrisetty/api:b85bcc4938693d74e85a4c9442988e96c644b961.sha
+        imagePullPolicy: IfNotPresent
+        name: api
+        volumeMounts:
+        - mountPath: "/etc/envoy"
+          name: config-volume
+        resources:
+          requests:
+            memory: 0.1G
+            cpu: 0.1
+          limits:
+            memory: 0.25G
+            cpu: 0.25
+        terminationMessagePath: /dev/termination-log
+      - name: statsd-exporter
+        image: prom/statsd-exporter
+      volumes:
+      - configMap:
+          name: api-config
+        name: config-volume
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels: {forge.service: api, forge.profile: default}
+  annotations: {forge.repo: '', forge.descriptor: service.yaml, forge.version: b85bcc4938693d74e85a4c9442988e96c644b961.sha}
+data:
+  envoy.json: "{\n  \"admin\":{\n    \"access_log_path\":\"/tmp/admin_access_log\"\
+    ,\n    \"address\":\"tcp://127.0.0.1:8001\"\n  },\n  \"cluster_manager\":{\n \
+    \   \"clusters\":[\n\n  \n      {\n        \"connect_timeout_ms\":1000,\n    \
+    \    \"hosts\":[\n          {\n            \"url\":\"tcp://search:80\"\n     \
+    \     }\n        ],\n        \"lb_type\":\"round_robin\",\n        \"name\":\"\
+    search\",\n        \"type\":\"strict_dns\"\n      },\n  \n\n  \n      {\n    \
+    \    \"connect_timeout_ms\":1000,\n        \"hosts\":[\n          {\n        \
+    \    \"url\":\"tcp://tasks:80\"\n          }\n        ],\n        \"lb_type\"\
+    :\"round_robin\",\n        \"name\":\"tasks\",\n        \"type\":\"strict_dns\"\
+    \n      },\n  \n      {\n        \"connect_timeout_ms\":1000,\n        \"hosts\"\
+    :[\n          {\n            \"url\":\"tcp://tasks-canary:80\"\n          }\n\
+    \        ],\n        \"lb_type\":\"round_robin\",\n        \"name\":\"tasks-canary\"\
+    ,\n        \"type\":\"strict_dns\"\n      },\n  \n\n      {\n        \"connect_timeout_ms\"\
+    :1000,\n        \"hosts\":[\n          {\n            \"url\":\"tcp://auth:80\"\
+    \n          }\n        ],\n        \"lb_type\":\"round_robin\",\n        \"name\"\
+    :\"ext_auth\",\n        \"type\":\"strict_dns\"\n      },\n      {\n        \"\
+    connect_timeout_ms\":1000,\n        \"hosts\":[\n          {\n            \"url\"\
+    :\"tcp://auth:80\"\n          }\n        ],\n        \"lb_type\":\"round_robin\"\
+    ,\n        \"name\":\"fallback\",\n        \"type\":\"strict_dns\"\n      }\n\
+    \    ]\n  },\n  \"listeners\":[\n    {\n      \"address\":\"tcp://0.0.0.0:80\"\
+    ,\n      \"filters\":[\n        {\n          \"name\":\"http_connection_manager\"\
+    ,\n          \"type\":\"read\",\n          \"config\":{\n            \"access_log\"\
+    :[\n              {\n                \"path\":\"/tmp/access_log\"\n          \
+    \    }\n            ],\n            \"codec_type\":\"auto\",\n            \"filters\"\
+    :[\n              {\n                \"name\":\"extauth\",\n                \"\
+    type\":\"decoder\",\n                \"config\":{\n                  \"cluster\"\
+    :\"ext_auth\",\n                  \"timeout_ms\":3000\n                }\n   \
+    \           },\n              {\n                \"config\":{},\n            \
+    \    \"name\":\"router\",\n                \"type\":\"decoder\"\n            \
+    \  }\n            ],\n            \"route_config\":{\n              \"virtual_hosts\"\
+    :[\n                {\n                  \"name\":\"backend\",\n             \
+    \     \"domains\":[\n                    \"*\"\n                  ],\n       \
+    \           \"routes\":[\n                \n                    {\n          \
+    \            \"prefix\":\"/search/\",\n                      \"prefix_rewrite\"\
+    :\"/\",\n                      \"weighted_clusters\": {\n                    \
+    \    \"clusters\": [\n                      \n                          { \"name\"\
+    : \"search\", \"weight\": 100 }\n                      \n                    \
+    \    ]\n                      }\n                    },\n                \n  \
+    \                  {\n                      \"prefix\":\"/tasks/\",\n        \
+    \              \"prefix_rewrite\":\"/\",\n                      \"weighted_clusters\"\
+    : {\n                        \"clusters\": [\n                      \n       \
+    \                   { \"name\": \"tasks\", \"weight\": 90 },\n               \
+    \       \n                          { \"name\": \"tasks-canary\", \"weight\":\
+    \ 10 }\n                      \n                        ]\n                  \
+    \    }\n                    },\n                \n                    {\n    \
+    \                  \"prefix\":\"/\",\n                      \"cluster\": \"fallback\"\
+    \n                    }\n                  ]\n                }\n            \
+    \  ]\n            },\n            \"stat_prefix\":\"ingress_http\"\n         \
+    \ }\n        }\n      ]\n    }\n  ],\n  \"stats_flush_interval_ms\":1000,\n  \"\
+    statsd_local_udp_port\":9125\n}"

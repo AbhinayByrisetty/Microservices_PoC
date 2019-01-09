@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigateway
+spec:
+  selector:
+    app: apigateway
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata: {name: apigateway}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: apigateway}
+  strategy:
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+    type: RollingUpdate
+  revisionHistoryLimit: 1
+  template:
+    metadata:
+      labels: {app: apigateway}
+      name: apigateway
+    spec:
+      containers:
+      - image: api
+        imagePullPolicy: IfNotPresent
+        name: apigateway
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+---

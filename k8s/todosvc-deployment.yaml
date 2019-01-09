@@ -1,0 +1,28 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: todosvc-deployment
+  labels:
+    app: todosvc
+spec:
+  selector:
+    matchLabels:
+      app: todosvc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: todosvc
+    spec:
+      containers:
+      - name: todosvc
+        image: abhinaybyrisetty/todomgr-poc:todosvc
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 5001
